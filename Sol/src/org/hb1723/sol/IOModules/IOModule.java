@@ -1,4 +1,4 @@
-package org.hb1723.sol;
+package org.hb1723.sol.IOModules;
 
 public interface IOModule {
 	public void start();
