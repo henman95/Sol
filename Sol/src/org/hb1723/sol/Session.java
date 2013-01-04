@@ -1,0 +1,67 @@
+package org.hb1723.sol;
+
+import java.util.concurrent.LinkedBlockingQueue;
+
+import org.hb1723.sol.IOModules.IOModule;
+
+public class Session implements Runnable {
+	public Session( String id, IOModule ioModule, SessionManager sessionManager ) {
+		this.id             = id;
+		this.inputQueue     = new LinkedBlockingQueue<String>();
+		this.ioModule       = ioModule;
+		this.sessionManager = sessionManager;
+		this.thread         = new Thread( this );
+	}
+	
+	public void setId( String id ) {
+		this.id = id;
+	}
+	
+	public String getId() {
+		return this.id;
+	}
+
+	// IOManager Interface
+	public void pushInput( String text ) {
+		inputQueue.add( text );
+
+		if( !thread.isAlive() ) {
+			thread = new Thread( this );
+			thread.start();
+		}
+	}
+		
+	public void send( String text ) {
+		ioModule.send( this.id, text );
+	}
+	
+	public void run() {
+		while( inputQueue.size() > 0 )	
+			process( inputQueue.poll() );
+	}
+	
+	private void process( String command ) {
+		send( "Processing for (" + id + ") : " + command );
+		sleep( 1000 );
+	}
+	
+	private void sleep( int ms ) {
+		try {
+			Thread.sleep( ms );
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	
+	private String   id;
+	private IOModule ioModule;
+	@SuppressWarnings("unused")
+	private SessionManager sessionManager;
+	private LinkedBlockingQueue<String> inputQueue;
+
+	private Thread   thread;
+	private volatile boolean running;
+	
+}

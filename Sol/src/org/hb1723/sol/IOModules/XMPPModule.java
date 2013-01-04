@@ -1,14 +1,12 @@
 package org.hb1723.sol.IOModules;
 
-import java.util.HashMap;
-
+import org.hb1723.sol.Session;
+import org.hb1723.sol.SessionManager;
 import org.jivesoftware.smack.Connection;
-import org.jivesoftware.smack.PacketCollector;
 import org.jivesoftware.smack.PacketListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.filter.FromContainsFilter;
-import org.jivesoftware.smack.filter.FromMatchesFilter;
 import org.jivesoftware.smack.filter.PacketFilter;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Packet;
@@ -19,13 +17,13 @@ public class XMPPModule implements IOModule, Runnable, PacketListener {
 	private Connection connection;
 	private Thread thread;
 	private volatile boolean done;
+	private SessionManager sessionManager;
 	
-	private HashMap<String,IOSession> sessions;
-	
-	public XMPPModule() {
-		thread = null;
-		done   = false;
-		sessions = new HashMap<String,IOSession>();
+	public XMPPModule( SessionManager sessionManager ) {
+		this.thread = null;
+		this.done   = false;
+		
+		this.sessionManager = sessionManager;  
 	}
 	
 	@Override
@@ -70,6 +68,7 @@ public class XMPPModule implements IOModule, Runnable, PacketListener {
 			
 			while( !done ) {
 				Thread.sleep( 10000 );
+				System.out.println( "XMPPModule - Alive" );
 			}
 
 			connection.disconnect();
@@ -82,38 +81,18 @@ public class XMPPModule implements IOModule, Runnable, PacketListener {
 
 	@Override
 	public void processPacket(Packet packet) {
-		
 		Message message = (Message) packet;
 		
-		String sessionKey = packet.getFrom();
-		
-		if( ! sessions.containsKey( sessionKey ) ) {
-			XMPPSession newSession = new XMPPSession( this );
-			newSession.setID( sessionKey );
-			newSession.setDestination( packet.getFrom() );
-			
-			sessions.put( sessionKey, newSession );
-		}
-	
-		IOSession session = sessions.get( sessionKey );
-		session.addInputQueue( message.getBody() );
-		
-		if( !session.isRunning() ) {
-			Thread sessionThread = new Thread( session );
-			sessionThread.start();
-		}
-		
-		System.out.println( session );
-		
 		if( message.getType() == Message.Type.chat ) {
-			System.out.println( "-----------------------------:" + packet.getPropertyNames().size() );
-			System.out.println( "! From : " + message.getFrom() );
-			System.out.println( "! Body : " + message.getBody() );
+			String sessionId = message.getFrom();
+			String text      = message.getBody();
 			
-			//Message response = new Message( message.getFrom(), Message.Type.chat );
-			//response.setBody( "! Echo: " + message.getBody() );
+			if( !sessionManager.hasSession( sessionId ) )
+				sessionManager.createSession( sessionId, this ); 
+	
+			Session session = sessionManager.getSession( sessionId );
 			
-			//connection.sendPacket( response );
+			session.pushInput( text );
 		}
 	}
 	

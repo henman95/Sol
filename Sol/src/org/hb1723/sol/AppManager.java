@@ -5,11 +5,9 @@ import org.hb1723.sol.IOModules.XMPPModule;
 
 public class AppManager {
 
-	/**
-	 * @param args
-	 */
 	public static void main(String[] args) {
-		IOModule xmpp = new XMPPModule();
+		SessionManager sessionManager = new SessionManager();
+		IOModule xmpp = new XMPPModule( sessionManager );
 
 		xmpp.start();
 
