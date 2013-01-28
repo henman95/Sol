@@ -55,6 +55,14 @@ public class XMPPModule implements IOModule, Runnable, PacketListener {
 		connection.sendPacket( response );
 	}
 	
+	public void send( Session session, String text ) {
+		send( session.getProperty( "xmppDestination" ), text );
+	}
+	
+	public void debug( Session session, int level, String text ) {
+		send( session.getProperty( "xmppDebugDestination" ), "Debug(" + level + "):" + text );
+	}
+	
 	@Override
 	public void run() {
 		connection = new XMPPConnection( "webmail.1723.org" );
@@ -81,18 +89,31 @@ public class XMPPModule implements IOModule, Runnable, PacketListener {
 
 	@Override
 	public void processPacket(Packet packet) {
+		Session session;
+		
 		Message message = (Message) packet;
 		
 		if( message.getType() == Message.Type.chat ) {
 			String sessionId = message.getFrom();
 			String text      = message.getBody();
 			
-			if( !sessionManager.hasSession( sessionId ) )
-				sessionManager.createSession( sessionId, this ); 
-	
-			Session session = sessionManager.getSession( sessionId );
+			if( !sessionManager.hasSession( sessionId ) ) {
+				session = sessionManager.createSession( sessionId, this );
+				session.setProperty( "xmppDebugDestination", sessionId );
+				session.setProperty( "xmppDestination"     , sessionId );
+			} else {
+				session = sessionManager.getSession( sessionId );
+			}
 			
-			session.pushInput( text );
+			if( text.startsWith("d:") ) {
+				System.out.println( "Setting debug for sessionID (" + sessionId + ") to " + text.substring( 2 ) );
+				session.setProperty( "xmppDebugDestination", text.substring( 2 ) );
+			} if( text.startsWith( "D:" ) ) {
+				session.setProperty( "xmppDebugDestination", "debug@webmail.1723.org" );
+				System.out.println( "Setting debug for sessionID (" + sessionId + ") to debug@webmail.1723.org" );
+			} else {
+				session.pushInput( text );
+			}
 		}
 	}
 	
